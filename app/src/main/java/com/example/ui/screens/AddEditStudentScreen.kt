@@ -283,6 +283,100 @@ fun AddEditStudentScreen(
                 }
             }
 
+            // Dormitory and Financial Information Section Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                border = CardDefaults.outlinedCardBorder()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    FormHeader("معلومات السكن والمالية")
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CustomOutlinedTextField(
+                            value = viewModel.roomNumberInput,
+                            onValueChange = { viewModel.roomNumberInput = it },
+                            label = "رقم الغرفة *",
+                            icon = Icons.Default.Home,
+                            placeholder = "مثال: 204",
+                            modifier = Modifier.weight(1f)
+                        )
+                        CustomOutlinedTextField(
+                            value = viewModel.roomRentInput,
+                            onValueChange = { viewModel.roomRentInput = it },
+                            label = "الإيجار الشهري *",
+                            icon = Icons.Default.CreditCard,
+                            placeholder = "مثال: 30000",
+                            keyboardType = KeyboardType.Number,
+                            modifier = Modifier.weight(1.2f)
+                        )
+                    }
+
+                    CustomOutlinedTextField(
+                        value = viewModel.totalPaidInput,
+                        onValueChange = { viewModel.totalPaidInput = it },
+                        label = "المبالغ المسددة مسبقاً (ريال)",
+                        icon = Icons.Default.Check,
+                        placeholder = "مثال: 0",
+                        keyboardType = KeyboardType.Number
+                    )
+
+                    if (isEditMode) {
+                        HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .clickable {
+                                    viewModel.isActiveInRoomInput = !viewModel.isActiveInRoomInput
+                                    if (!viewModel.isActiveInRoomInput) {
+                                        viewModel.rentEndDateInput = System.currentTimeMillis()
+                                    } else {
+                                        viewModel.rentEndDateInput = null
+                                    }
+                                }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Checkbox(
+                                checked = viewModel.isActiveInRoomInput,
+                                onCheckedChange = { checked ->
+                                    viewModel.isActiveInRoomInput = checked
+                                    if (!checked) {
+                                        viewModel.rentEndDateInput = System.currentTimeMillis()
+                                    } else {
+                                        viewModel.rentEndDateInput = null
+                                    }
+                                },
+                                colors = CheckboxDefaults.colors(checkedColor = Color(0xFF0D9488))
+                            )
+                            Column {
+                                Text(
+                                    text = "الطالب لا يزال نشطاً في الغرفة ويشغل السكن",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF1E293B)
+                                )
+                                Text(
+                                    text = "إلغاء التحديد يعني مغادرة الطالب وسيتوقف تراكم الإيجارات.",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF64748B)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(8.dp))
 
             // Action Save/Cancel Buttons

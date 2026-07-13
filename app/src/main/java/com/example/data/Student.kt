@@ -25,5 +25,11 @@ data class Student(
     val sector: String, // العزلة
     val specialization: String, // التخصص
     val level: String, // المستوى الدراسي: الأول، الثاني، إلخ
-    val phone: String // رقم الهاتف
+    val phone: String, // رقم الهاتف
+    val roomNumber: String = "", // رقم الغرفة
+    val roomRent: Double = 0.0, // الإيجار الشهري للغرفة
+    val totalPaid: Double = 0.0, // إجمالي المبالغ المدفوعة
+    val rentStartDate: Long = System.currentTimeMillis(), // تاريخ بدء عقد الإيجار
+    val isActiveInRoom: Boolean = true, // هل لا يزال نشطاً في الغرفة؟
+    val rentEndDate: Long? = null // تاريخ مغادرة الغرفة
 )

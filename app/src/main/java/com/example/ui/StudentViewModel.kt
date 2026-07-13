@@ -61,6 +61,12 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     var specializationInput by mutableStateOf("")
     var levelInput by mutableStateOf("المستوى الأول") // default
     var phoneInput by mutableStateOf("")
+    var roomNumberInput by mutableStateOf("")
+    var roomRentInput by mutableStateOf("")
+    var totalPaidInput by mutableStateOf("0.0")
+    var rentStartDateInput by mutableStateOf(System.currentTimeMillis())
+    var isActiveInRoomInput by mutableStateOf(true)
+    var rentEndDateInput by mutableStateOf<Long?>(null)
 
     // Form validation and messaging status
     var formError by mutableStateOf<String?>(null)
@@ -105,6 +111,12 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             specializationInput = student.specialization
             levelInput = student.level
             phoneInput = student.phone
+            roomNumberInput = student.roomNumber
+            roomRentInput = student.roomRent.toString()
+            totalPaidInput = student.totalPaid.toString()
+            rentStartDateInput = student.rentStartDate
+            isActiveInRoomInput = student.isActiveInRoom
+            rentEndDateInput = student.rentEndDate
         } else if (screen == Screen.AddStudent) {
             clearForm()
         }
@@ -157,6 +169,12 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         specializationInput = ""
         levelInput = "المستوى الأول"
         phoneInput = ""
+        roomNumberInput = ""
+        roomRentInput = ""
+        totalPaidInput = "0.0"
+        rentStartDateInput = System.currentTimeMillis()
+        isActiveInRoomInput = true
+        rentEndDateInput = null
         formError = null
     }
 
@@ -182,6 +200,16 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             formError = "الرجاء إدخال رقم الهاتف."
             return
         }
+        if (roomNumberInput.trim().isEmpty()) {
+            formError = "الرجاء إدخال رقم الغرفة."
+            return
+        }
+        val roomRentVal = roomRentInput.trim().toDoubleOrNull()
+        if (roomRentVal == null || roomRentVal < 0.0) {
+            formError = "الرجاء إدخال مبلغ إيجار شهري صحيح وموجب."
+            return
+        }
+        val totalPaidVal = totalPaidInput.trim().toDoubleOrNull() ?: 0.0
 
         formError = null
         isOperating = true
@@ -202,7 +230,13 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     sector = sectorInput.trim(),
                     specialization = specializationInput.trim(),
                     level = levelInput,
-                    phone = phoneInput.trim()
+                    phone = phoneInput.trim(),
+                    roomNumber = roomNumberInput.trim(),
+                    roomRent = roomRentVal,
+                    totalPaid = totalPaidVal,
+                    rentStartDate = rentStartDateInput,
+                    isActiveInRoom = isActiveInRoomInput,
+                    rentEndDate = rentEndDateInput
                 )
 
                 if (idToEdit == null) {
@@ -358,6 +392,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                         val dist = "المديرية ${i % 3 + 1}"
                         val village = "قرية ${familyNames.random()}"
                         val sector = "عزلة ${i % 5 + 1}"
+                        val roomNum = "غرفة ${(i % 50) + 101}"
+                        val rentVal = 25000.0 + (i % 6) * 5000.0
+                        val paidVal = (i % 4) * 15000.0
+                        val monthsAgo = (i % 4)
+                        val startDateMs = System.currentTimeMillis() - (monthsAgo * 30L * 24 * 60 * 60 * 1000L)
 
                         studentsToInsert.add(
                             Student(
@@ -371,14 +410,18 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                                 sector = sector,
                                 specialization = specializations.random(),
                                 level = levels.random(),
-                                phone = "77${(10000000..99999999).random()}"
+                                phone = "77${(10000000..99999999).random()}",
+                                roomNumber = roomNum,
+                                roomRent = rentVal,
+                                totalPaid = paidVal,
+                                rentStartDate = startDateMs
                             )
                         )
                     }
 
                     studentDao.insertStudents(studentsToInsert)
                     withContext(Dispatchers.Main) {
-                        operationSuccessMessage = "تم توليد 3000 طالب بنجاح للفحص والتجريب!"
+                        operationSuccessMessage = "تم توليد 3000 طالب بنجاح للفحص والتجريب مع السكن والمدفوعات!"
                         onComplete()
                     }
                 } catch (e: Exception) {
@@ -390,6 +433,50 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             }
             isOperating = false
         }
+    }
+
+    fun recordPayment(student: Student, amount: Double) {
+        viewModelScope.launch {
+            try {
+                val updatedStudent = student.copy(
+                    totalPaid = student.totalPaid + amount
+                )
+                studentDao.updateStudent(updatedStudent)
+                if (selectedStudent?.id == student.id) {
+                    selectedStudent = updatedStudent
+                }
+                operationSuccessMessage = "تم تسجيل سداد بقيمة ${amount.toLong()} ريال بنجاح!"
+            } catch (e: Exception) {
+                operationError = "فشل تسجيل الدفعة: ${e.message}"
+            }
+        }
+    }
+
+    fun vacateStudentFromRoom(student: Student) {
+        viewModelScope.launch {
+            try {
+                val updatedStudent = student.copy(
+                    isActiveInRoom = false,
+                    rentEndDate = System.currentTimeMillis()
+                )
+                studentDao.updateStudent(updatedStudent)
+                if (selectedStudent?.id == student.id) {
+                    selectedStudent = updatedStudent
+                }
+                operationSuccessMessage = "تم إخلاء الطالب ${student.name} من الغرفة بنجاح مع إبقاء حسابه المالي معلقاً بسجل المستحقات!"
+            } catch (e: Exception) {
+                operationError = "فشل إخلاء الطالب من الغرفة: ${e.message}"
+            }
+        }
+    }
+
+    fun calculateMonthsElapsed(startDateMs: Long, endDateMs: Long = System.currentTimeMillis()): Int {
+        val startCalendar = java.util.Calendar.getInstance().apply { timeInMillis = startDateMs }
+        val endCalendar = java.util.Calendar.getInstance().apply { timeInMillis = endDateMs }
+        val diffYear = endCalendar.get(java.util.Calendar.YEAR) - startCalendar.get(java.util.Calendar.YEAR)
+        val diffMonth = endCalendar.get(java.util.Calendar.MONTH) - startCalendar.get(java.util.Calendar.MONTH)
+        val totalMonths = diffYear * 12 + diffMonth + 1 // count current month as well
+        return if (totalMonths < 1) 1 else totalMonths
     }
 
     fun clearAllData() {

@@ -36,10 +36,33 @@ fun DashboardScreen(
     modifier: Modifier = Modifier
 ) {
     val students by viewModel.allStudents.collectAsState()
-    val totalStudents = students.size
     val recentStudents = students.take(5)
 
     // Derived statistics
+    val activeStudents = students.filter { it.isActiveInRoom }
+    val activeCount = activeStudents.size
+    val vacatedCount = students.size - activeCount
+
+    var totalOutstandingActive = 0.0
+    var totalOutstandingVacated = 0.0
+    students.forEach { student ->
+        val months = if (student.isActiveInRoom) {
+            viewModel.calculateMonthsElapsed(student.rentStartDate)
+        } else {
+            viewModel.calculateMonthsElapsed(student.rentStartDate, student.rentEndDate ?: System.currentTimeMillis())
+        }
+        val totalRent = months * student.roomRent
+        val remaining = totalRent - student.totalPaid
+        if (remaining > 0) {
+            if (student.isActiveInRoom) {
+                totalOutstandingActive += remaining
+            } else {
+                totalOutstandingVacated += remaining
+            }
+        }
+    }
+
+    val totalStudents = students.size
     val specializationCount = students.map { it.specialization.lowercase().trim() }.distinct().size
     val levelCounts = students.groupBy { it.level }.mapValues { it.value.size }
 
@@ -98,24 +121,45 @@ fun DashboardScreen(
 
         // Stats Row (Bento Grid)
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                StatCard(
-                    title = "إجمالي الطلاب",
-                    value = totalStudents.toString(),
-                    icon = Icons.Default.People,
-                    color = Color(0xFF0D9488), // Brand Teal
-                    modifier = Modifier.weight(1f)
-                )
-                StatCard(
-                    title = "التخصصات",
-                    value = specializationCount.toString(),
-                    icon = Icons.Default.School,
-                    color = Color(0xFF10B981),
-                    modifier = Modifier.weight(1f)
-                )
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    StatCard(
+                        title = "الطلاب النشطين",
+                        value = activeCount.toString(),
+                        icon = Icons.Default.CheckCircle,
+                        color = Color(0xFF0D9488), // Brand Teal
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        title = "الطلاب المغادرين",
+                        value = vacatedCount.toString(),
+                        icon = Icons.Default.ExitToApp,
+                        color = Color(0xFFE11D48), // Rose Red
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    StatCard(
+                        title = "مستحقات النشطين",
+                        value = "${totalOutstandingActive.toLong()} ريال",
+                        icon = Icons.Default.AccountBalanceWallet,
+                        color = Color(0xFF0D9488),
+                        modifier = Modifier.weight(1f)
+                    )
+                    StatCard(
+                        title = "ذمم المغادرين",
+                        value = "${totalOutstandingVacated.toLong()} ريال",
+                        icon = Icons.Default.Warning,
+                        color = Color(0xFFF59E0B), // Amber
+                        modifier = Modifier.weight(1f)
+                    )
+                }
             }
         }
 
@@ -380,21 +424,42 @@ fun StudentListItemSmall(
             ) {
                 Text(
                     text = student.name.take(1),
-                    color = Color(0xFF4F46E5),
+                    color = Color(0xFF0D9488),
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp
                 )
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = student.name,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1E293B),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = student.name,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1E293B),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (!student.isActiveInRoom) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFFFEF2F2))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "غادر الغرفة",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFEF4444)
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),

@@ -4,6 +4,8 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -189,6 +191,7 @@ fun SearchScreen(
         if (viewModel.currentScreen == Screen.SearchAndDetails) {
             StudentDetailsDialog(
                 student = student,
+                viewModel = viewModel,
                 onEdit = {
                     viewModel.navigateTo(Screen.EditStudent, student)
                 },
@@ -267,15 +270,36 @@ fun StudentSearchItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = student.name,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1E293B),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = student.name,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1E293B),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (!student.isActiveInRoom) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFFFEF2F2))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "غادر الغرفة",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFEF4444)
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 Box(
                     modifier = Modifier
@@ -330,21 +354,40 @@ fun StudentSearchItem(
 @Composable
 fun StudentDetailsDialog(
     student: Student,
+    viewModel: StudentViewModel,
     onEdit: () -> Unit,
     onDeleteRequest: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var payAmountStr by remember { mutableStateOf("") }
+    
+    val months = if (student.isActiveInRoom) {
+        viewModel.calculateMonthsElapsed(student.rentStartDate)
+    } else {
+        viewModel.calculateMonthsElapsed(student.rentStartDate, student.rentEndDate ?: System.currentTimeMillis())
+    }
+    val totalRent = months * student.roomRent
+    val remaining = totalRent - student.totalPaid
+    val formattedDate = java.text.SimpleDateFormat("yyyy/MM/dd", java.util.Locale("ar")).format(java.util.Date(student.rentStartDate))
+    val formattedEndDate = if (student.rentEndDate != null) {
+        java.text.SimpleDateFormat("yyyy/MM/dd", java.util.Locale("ar")).format(java.util.Date(student.rentEndDate))
+    } else null
+
     Dialog(onDismissRequest = onDismiss) {
         Card(
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp)
+                .padding(horizontal = 4.dp)
         ) {
             Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                modifier = Modifier
+                    .padding(20.dp)
+                    .heightIn(max = 560.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Header with profile icon
                 Row(
@@ -379,12 +422,47 @@ fun StudentDetailsDialog(
 
                 // Student Name Banner
                 Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = student.name,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF1E293B)
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = student.name,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E293B),
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (student.isActiveInRoom) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFE6F4EA))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "نشط في السكن",
+                                    fontSize = 9.sp,
+                                    color = Color(0xFF137333),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFFCE8E6))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "غادر الغرفة",
+                                    fontSize = 9.sp,
+                                    color = Color(0xFFC5221F),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = "رقم القيد الأكاديمي: ${student.id}",
@@ -394,10 +472,17 @@ fun StudentDetailsDialog(
                     )
                 }
 
-                Divider(color = Color(0xFFF1F5F9))
+                HorizontalDivider(color = Color(0xFFF1F5F9))
 
-                // Details Bento Grid
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                // Section 1: Academic & Personal details
+                Text(
+                    text = "البيانات الأكاديمية والشخصية",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF64748B)
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     DetailRow(
                         icon = Icons.Default.School,
                         label = "التخصص والمستوى",
@@ -418,16 +503,244 @@ fun StudentDetailsDialog(
 
                     DetailRow(
                         icon = Icons.Default.Map,
-                        label = "محل الإقامة والسكن",
+                        label = "محل الإقامة والسكن الأصلي",
                         value = "اليمن، محافظة ${student.governorate}، مديرية ${student.district}" +
                                 if (student.sector.isNotEmpty() || student.village.isNotEmpty())
                                     " (عزلة ${student.sector}، قرية ${student.village})" else ""
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                HorizontalDivider(color = Color(0xFFF1F5F9))
 
-                // Dialog Buttons Grid
+                // Section 2: Dormitory & Rent details
+                Text(
+                    text = "بيانات السكن الجامعي والمالية",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0D9488)
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DetailRow(
+                        icon = Icons.Default.Home,
+                        label = if (student.isActiveInRoom) "رقم الغرفة وتاريخ السكن" else "رقم الغرفة وتفاصيل الإخلاء",
+                        value = if (student.isActiveInRoom) {
+                            "غرفة رقم [ ${student.roomNumber} ]  •  تاريخ السكن: $formattedDate"
+                        } else {
+                            "غرفة رقم [ ${student.roomNumber} ] (سابقاً)  •  السكن: $formattedDate  •  الإخلاء: $formattedEndDate"
+                        }
+                    )
+
+                    DetailRow(
+                        icon = Icons.Default.CreditCard,
+                        label = if (student.isActiveInRoom) "الإيجار والمدفوعات لـ ($months شهور)" else "إجمالي الإيجار والمدفوعات حتى الإخلاء ($months شهور)",
+                        value = "الإيجار الشهري: ${student.roomRent.toLong()} ريال\n" +
+                                "إجمالي المتراكم: ${totalRent.toLong()} ريال\n" +
+                                "إجمالي المسدد: ${student.totalPaid.toLong()} ريال"
+                    )
+
+                    // Outstanding Balance highlighting
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(if (remaining > 0) Color(0xFFFFF1F2) else Color(0xFFECFDF5))
+                            .padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (remaining > 0) Icons.Default.Warning else Icons.Default.CheckCircle,
+                            contentDescription = null,
+                            tint = if (remaining > 0) Color(0xFFEF4444) else Color(0xFF10B981),
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "المبلغ المتبقي المستحق",
+                                fontSize = 9.sp,
+                                color = if (remaining > 0) Color(0xFF991B1B) else Color(0xFF065F46),
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "${remaining.toLong()} ريال يمني",
+                                fontSize = 12.sp,
+                                color = if (remaining > 0) Color(0xFFB91C1C) else Color(0xFF047857),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                // Section 3: Recording a payment (سداد)
+                Text(
+                    text = "تسجيل سداد دفعة للإيجار",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = payAmountStr,
+                        onValueChange = { payAmountStr = it },
+                        placeholder = { Text("المبلغ بالريال", fontSize = 11.sp) },
+                        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                        ),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color(0xFF0F172A),
+                            unfocusedTextColor = Color(0xFF0F172A),
+                            focusedBorderColor = Color(0xFF0D9488),
+                            unfocusedBorderColor = Color(0xFFE2E8F0)
+                        ),
+                        modifier = Modifier
+                            .weight(1.5f)
+                            .height(50.dp)
+                    )
+
+                    Button(
+                        onClick = {
+                            val amt = payAmountStr.toDoubleOrNull()
+                            if (amt != null && amt > 0) {
+                                viewModel.recordPayment(student, amt)
+                                payAmountStr = ""
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("سداد", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                // Section 4: Communication & Sharing (التواصل والمشاركة)
+                Text(
+                    text = "التواصل ومشاركة كشف حساب الغرفة",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF1E293B)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            val message = """
+                                *كشف حساب السكن الجامعي* 🏠
+                                *الاسم:* ${student.name}
+                                *رقم الغرفة:* ${student.roomNumber}
+                                *تاريخ السكن:* $formattedDate
+                                *الإيجار الشهري:* ${student.roomRent.toLong()} ريال
+                                *عدد الأشهر:* $months
+                                *الإيجار المتراكم:* ${totalRent.toLong()} ريال
+                                *إجمالي المسدد:* ${student.totalPaid.toLong()} ريال
+                                *المبلغ المتبقي المترتب عليك:* ${remaining.toLong()} ريال
+                                
+                                *يرجى سداد المبلغ المتبقي في أقرب وقت. شكراً لتفهمكم.* 🙏
+                            """.trimIndent()
+                            
+                            try {
+                                val cleanPhone = student.phone.filter { it.isDigit() }
+                                val formattedPhone = if (cleanPhone.startsWith("0")) {
+                                    "967" + cleanPhone.substring(1)
+                                } else if (!cleanPhone.startsWith("967") && cleanPhone.length == 9) {
+                                    "967" + cleanPhone
+                                } else {
+                                    cleanPhone
+                                }
+                                val uri = android.net.Uri.parse("https://api.whatsapp.com/send?phone=$formattedPhone&text=${android.net.Uri.encode(message)}")
+                                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, uri).apply {
+                                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(android.content.Intent.EXTRA_TEXT, message)
+                                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                context.startActivity(android.content.Intent.createChooser(intent, "مشاركة كشف الحساب عبر"))
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF25D366)), // WhatsApp Green
+                        modifier = Modifier
+                            .weight(1.3f)
+                            .height(44.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("مشاركة واتساب", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    Button(
+                        onClick = {
+                            try {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_DIAL, android.net.Uri.parse("tel:${student.phone}")).apply {
+                                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                context.startActivity(intent)
+                            } catch (e: Exception) {}
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF475569)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(44.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(imageVector = Icons.Default.Call, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("اتصال هاتفي", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                if (student.isActiveInRoom) {
+                    Button(
+                        onClick = { viewModel.vacateStudentFromRoom(student) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF1F5F9)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(44.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ExitToApp,
+                            contentDescription = null,
+                            tint = Color(0xFF0F172A),
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "إنهاء السكن وإخلاء الغرفة",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F172A)
+                        )
+                    }
+
+                    HorizontalDivider(color = Color(0xFFF1F5F9))
+                }
+
+                // Edit & Delete
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)

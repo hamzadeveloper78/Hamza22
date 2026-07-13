@@ -205,13 +205,15 @@ object PdfGenerator {
                     canvas.drawLine(centerDividerX, currentY, centerDividerX, currentY + rowHeight, borderPaint)
 
                     // Right Section: Student Name & Identity
-                    val nameText = "$displayIndex. ${student.name}"
+                    val statusSuffix = if (student.isActiveInRoom) "" else " (غادر السكن)"
+                    val nameText = "$displayIndex. ${student.name}$statusSuffix"
                     drawRtlText(canvas, nameText, PAGE_WIDTH - MARGIN - 6f, currentY + 4f, boldCellPaint, Layout.Alignment.ALIGN_NORMAL, 188f)
                     val idText = "الهوية: ${student.idType} (${student.idNumber})"
                     drawRtlText(canvas, idText, PAGE_WIDTH - MARGIN - 6f, currentY + 21f, smallCellPaint, Layout.Alignment.ALIGN_NORMAL, 188f)
 
                     // Center Section: Specialization & Academic Level
-                    drawRtlText(canvas, student.specialization, rightDividerX - 6f, currentY + 4f, cellTextPaint, Layout.Alignment.ALIGN_NORMAL, 158f)
+                    val specRoom = "${student.specialization} (غرفة: ${student.roomNumber})"
+                    drawRtlText(canvas, specRoom, rightDividerX - 6f, currentY + 4f, cellTextPaint, Layout.Alignment.ALIGN_NORMAL, 158f)
                     drawRtlText(canvas, student.level, rightDividerX - 6f, currentY + 21f, levelTextPaint, Layout.Alignment.ALIGN_NORMAL, 158f)
 
                     // Left Section: Phone & Detailed Address

@@ -38,6 +38,7 @@ fun StudentListScreen(
     // Filtering states
     var selectedLevelFilter by remember { mutableStateOf("الكل") }
     var selectedSpecFilter by remember { mutableStateOf("الكل") }
+    var occupancyFilter by remember { mutableStateOf("الكل") }
     var searchText by remember { mutableStateOf("") }
 
     // Derive list of specializations for filter dropdown
@@ -46,15 +47,20 @@ fun StudentListScreen(
     }
 
     // Filtered students computation
-    val filteredStudents = remember(students, selectedLevelFilter, selectedSpecFilter, searchText) {
+    val filteredStudents = remember(students, selectedLevelFilter, selectedSpecFilter, occupancyFilter, searchText) {
         students.filter { student ->
             val matchesLevel = selectedLevelFilter == "الكل" || student.level == selectedLevelFilter
             val matchesSpec = selectedSpecFilter == "الكل" || student.specialization.trim() == selectedSpecFilter
+            val matchesOccupancy = when (occupancyFilter) {
+                "نشط حالياً" -> student.isActiveInRoom
+                "مغادر الغرفة" -> !student.isActiveInRoom
+                else -> true
+            }
             val matchesSearch = searchText.isBlank() ||
                     student.name.contains(searchText, ignoreCase = true) ||
                     student.idNumber.contains(searchText) ||
                     student.phone.contains(searchText)
-            matchesLevel && matchesSpec && matchesSearch
+            matchesLevel && matchesSpec && matchesOccupancy && matchesSearch
         }
     }
 
@@ -202,6 +208,33 @@ fun StudentListScreen(
                             }
                         }
                     }
+
+                    // Occupancy Filter Horizontal Chips Row
+                    val occupancyOptions = listOf("الكل", "نشط حالياً", "مغادر الغرفة")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        occupancyOptions.forEach { opt ->
+                            val isSelected = occupancyFilter == opt
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(if (isSelected) Color(0xFF0D9488) else Color(0xFFF1F5F9))
+                                    .clickable { occupancyFilter = opt }
+                                    .padding(horizontal = 14.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = opt,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) Color.White else Color(0xFF64748B)
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -261,6 +294,7 @@ fun StudentListScreen(
         if (viewModel.currentScreen == Screen.SearchAndDetails) {
             StudentDetailsDialog(
                 student = student,
+                viewModel = viewModel,
                 onEdit = {
                     viewModel.navigateTo(Screen.EditStudent, student)
                 },
@@ -316,14 +350,35 @@ fun StudentListCard(
 
             // Body info
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = student.name,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF1E293B),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = student.name,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1E293B),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (!student.isActiveInRoom) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFFFEF2F2))
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(
+                                text = "غادر الغرفة",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFEF4444)
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
