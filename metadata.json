@@ -1,0 +1,6 @@
+{
+  "name": "نظام إدارة الطلاب",
+  "description": "نظام متكامل لإدارة بيانات الطلاب بالكامل بدون إنترنت، يتيح إضافة وتعديل وحذف الطلاب، البحث السريع، توليد التقارير وتصديرها بصيغة PDF، والنسخ الاحتياطي.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
