@@ -37,6 +37,29 @@ fun AddEditStudentScreen(
     val isEditMode = viewModel.idToEdit != null
     val scrollState = rememberScrollState()
 
+    val students by viewModel.allStudents.collectAsState()
+
+    // Check if the current roomNumber input matches any active student
+    val activeRoommate = remember(students, viewModel.roomNumberInput, viewModel.idToEdit) {
+        val trimmedRoom = viewModel.roomNumberInput.trim()
+        if (trimmedRoom.isEmpty()) null
+        else students.firstOrNull {
+            it.isActiveInRoom && 
+            it.roomNumber.trim().lowercase() == trimmedRoom.lowercase() &&
+            it.id != viewModel.idToEdit
+        }
+    }
+
+    // Automatically set rent if an active roommate is found and rent input is empty or zero
+    LaunchedEffect(activeRoommate) {
+        activeRoommate?.let { roommate ->
+            val currentRent = viewModel.roomRentInput.trim()
+            if (currentRent.isEmpty() || currentRent == "0" || currentRent == "0.0") {
+                viewModel.roomRentInput = roommate.roomRent.toLong().toString()
+            }
+        }
+    }
+
     // Dialog control states for custom selectors
     var showIdTypeDialog by remember { mutableStateOf(false) }
     var showLevelDialog by remember { mutableStateOf(false) }
@@ -317,6 +340,43 @@ fun AddEditStudentScreen(
                             keyboardType = KeyboardType.Number,
                             modifier = Modifier.weight(1.2f)
                         )
+                    }
+
+                    // Roommate Warning Banner
+                    AnimatedVisibility(visible = activeRoommate != null) {
+                        activeRoommate?.let { roommate ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFE6F4EA)), // Soft green/teal
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = null,
+                                        tint = Color(0xFF0D9488)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Column {
+                                        Text(
+                                            text = "تنبيه السكن المشترك (غرفة رقم ${viewModel.roomNumberInput})",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF0F5132)
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "الغرفة مشغولة حالياً بالطالب النشط [ ${roommate.name} ]. سيتم احتساب الإيجار (${roommate.roomRent.toLong()} ريال) عليهما معاً بشكل منفصل لكل حساب.",
+                                            fontSize = 10.sp,
+                                            color = Color(0xFF0F5132)
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
 
                     CustomOutlinedTextField(

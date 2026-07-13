@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.example.data.Student
 import com.example.ui.Screen
 import com.example.ui.StudentViewModel
@@ -37,6 +38,8 @@ fun DashboardScreen(
 ) {
     val students by viewModel.allStudents.collectAsState()
     val recentStudents = students.take(5)
+
+    var showRoomLedgerDialog by remember { mutableStateOf(false) }
 
     // Derived statistics
     val activeStudents = students.filter { it.isActiveInRoom }
@@ -217,6 +220,17 @@ fun DashboardScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                ActionCard(
+                    title = "مراقبة إيجارات وحسابات الغرف السكنية",
+                    subtitle = "الغرف المشغولة والشركاء، ديون متأخرات المغادرين، وتجنب التضارب",
+                    icon = Icons.Default.Home,
+                    color = Color(0xFF4F46E5), // Beautiful Indigo
+                    onClick = { showRoomLedgerDialog = true },
+                    modifier = Modifier.fillMaxWidth()
+                )
             }
         }
 
@@ -289,6 +303,14 @@ fun DashboardScreen(
                 )
             }
         }
+    }
+
+    if (showRoomLedgerDialog) {
+        RoomLedgerDialog(
+            viewModel = viewModel,
+            students = students,
+            onDismiss = { showRoomLedgerDialog = false }
+        )
     }
 }
 
@@ -489,6 +511,441 @@ fun StudentListItemSmall(
                 tint = Color(0xFF94A3B8),
                 modifier = Modifier.size(20.dp)
             )
+        }
+    }
+}
+
+data class RoomLedgerData(
+    val roomNumber: String,
+    val activeOccupants: List<Student>,
+    val vacatedDebtors: List<Student>,
+    val totalActiveRemaining: Double,
+    val totalVacatedRemaining: Double,
+    val totalRemaining: Double
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RoomLedgerDialog(
+    viewModel: StudentViewModel,
+    students: List<Student>,
+    onDismiss: () -> Unit
+) {
+    var filterType by remember { mutableStateOf("الكل") }
+
+    val roomsGrouped = remember(students) {
+        students
+            .filter { it.roomNumber.trim().isNotEmpty() }
+            .groupBy { it.roomNumber.trim() }
+    }
+
+    val roomItems = remember(roomsGrouped, filterType) {
+        val list = mutableListOf<RoomLedgerData>()
+        roomsGrouped.forEach { (roomNumber, studentList) ->
+            val active = studentList.filter { it.isActiveInRoom }
+            val vacatedDebtors = studentList.filter { student ->
+                if (student.isActiveInRoom) false
+                else {
+                    val months = viewModel.calculateMonthsElapsed(student.rentStartDate, student.rentEndDate ?: System.currentTimeMillis())
+                    val totalRent = months * student.roomRent
+                    val remaining = totalRent - student.totalPaid
+                    remaining > 0
+                }
+            }
+
+            val totalActiveRemaining = active.sumOf { student ->
+                val months = viewModel.calculateMonthsElapsed(student.rentStartDate)
+                val totalRent = months * student.roomRent
+                maxOf(0.0, totalRent - student.totalPaid)
+            }
+
+            val totalVacatedRemaining = vacatedDebtors.sumOf { student ->
+                val months = viewModel.calculateMonthsElapsed(student.rentStartDate, student.rentEndDate ?: System.currentTimeMillis())
+                val totalRent = months * student.roomRent
+                maxOf(0.0, totalRent - student.totalPaid)
+            }
+
+            val totalRemaining = totalActiveRemaining + totalVacatedRemaining
+
+            val item = RoomLedgerData(
+                roomNumber = roomNumber,
+                activeOccupants = active,
+                vacatedDebtors = vacatedDebtors,
+                totalActiveRemaining = totalActiveRemaining,
+                totalVacatedRemaining = totalVacatedRemaining,
+                totalRemaining = totalRemaining
+            )
+
+            // Apply filters
+            val matchesFilter = when (filterType) {
+                "غرف متبقي عليها إيجار" -> totalRemaining > 0
+                "سكن مشترك" -> active.size > 1
+                "متأخرات مغادرين" -> vacatedDebtors.isNotEmpty()
+                else -> true
+            }
+
+            if (matchesFilter) {
+                list.add(item)
+            }
+        }
+        list.sortedBy { it.roomNumber }
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.85f)
+                .padding(vertical = 12.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "كشف وحسابات الغرف السكنية",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1E293B)
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "إغلاق",
+                            tint = Color(0xFF64748B)
+                        )
+                    }
+                }
+
+                HorizontalDivider(color = Color(0xFFF1F5F9))
+
+                // Filter chips
+                val filters = listOf("الكل", "غرف متبقي عليها إيجار", "سكن مشترك", "متأخرات مغادرين")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    filters.forEach { filter ->
+                        val isSelected = filterType == filter
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(if (isSelected) Color(0xFF4F46E5) else Color(0xFFF1F5F9))
+                                .clickable { filterType = filter }
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = filter,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) Color.White else Color(0xFF64748B)
+                            )
+                        }
+                    }
+                }
+
+                // Rooms List
+                if (roomItems.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Home,
+                                contentDescription = null,
+                                tint = Color(0xFF94A3B8),
+                                modifier = Modifier.size(48.dp)
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "لا توجد غرف تطابق التصفية الحالية",
+                                fontSize = 12.sp,
+                                color = Color(0xFF64748B),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(roomItems) { item ->
+                            RoomLedgerCard(item = item, viewModel = viewModel)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun RoomLedgerCard(
+    item: RoomLedgerData,
+    viewModel: StudentViewModel
+) {
+    val dateFormatter = remember { java.text.SimpleDateFormat("yyyy/MM/dd", java.util.Locale("ar")) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+        border = CardDefaults.outlinedCardBorder()
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            // Room Title & Status
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Home,
+                        contentDescription = null,
+                        tint = Color(0xFF4F46E5),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "غرفة رقم [ ${item.roomNumber} ]",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF1E293B)
+                    )
+                }
+
+                // Status Badge (Active or Vacated)
+                val isActive = item.activeOccupants.isNotEmpty()
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isActive) Color(0xFFE6F4EA) else Color(0xFFFEE2E2))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = if (isActive) "نشطة حالياً" else "شاغرة وبها ذمم معلقة",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (isActive) Color(0xFF137333) else Color(0xFFC5221F)
+                    )
+                }
+            }
+
+            HorizontalDivider(color = Color(0xFFE2E8F0))
+
+            // 1. Active occupants section
+            if (item.activeOccupants.isNotEmpty()) {
+                Text(
+                    text = "النزلاء النشطين حالياً في الغرفة:",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF0D9488)
+                )
+                item.activeOccupants.forEach { occupant ->
+                    val months = viewModel.calculateMonthsElapsed(occupant.rentStartDate)
+                    val totalRent = months * occupant.roomRent
+                    val remaining = maxOf(0.0, totalRent - occupant.totalPaid)
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White, RoundedCornerShape(10.dp))
+                            .padding(10.dp)
+                    ) {
+                        Text(
+                            text = occupant.name,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF1E293B)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "البداية: ${dateFormatter.format(java.util.Date(occupant.rentStartDate))}",
+                                fontSize = 9.sp,
+                                color = Color(0xFF64748B)
+                            )
+                            Text(
+                                text = "الإيجار: ${occupant.roomRent.toLong()} ريال/شهر",
+                                fontSize = 9.sp,
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "المدة: $months أشهر (إجمالي: ${totalRent.toLong()} ريال)",
+                                fontSize = 9.sp,
+                                color = Color(0xFF64748B)
+                            )
+                            Text(
+                                text = "المسدد: ${occupant.totalPaid.toLong()} ريال",
+                                fontSize = 9.sp,
+                                color = Color(0xFF10B981),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        if (remaining > 0) {
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Color(0xFFFEF3C7))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "المتبقي: ${remaining.toLong()} ريال",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFD97706)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Vacated debtors section
+            if (item.vacatedDebtors.isNotEmpty()) {
+                Text(
+                    text = "حسابات معلقة لطلاب غادروا الغرفة سابقاً:",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFEF4444)
+                )
+                item.vacatedDebtors.forEach { debtor ->
+                    val months = viewModel.calculateMonthsElapsed(debtor.rentStartDate, debtor.rentEndDate ?: System.currentTimeMillis())
+                    val totalRent = months * debtor.roomRent
+                    val remaining = maxOf(0.0, totalRent - debtor.totalPaid)
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFFFFF1F2), RoundedCornerShape(10.dp))
+                            .padding(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = debtor.name,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF9F1239)
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(Color(0xFFFFE4E6))
+                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                            ) {
+                                Text(
+                                    text = "غادر",
+                                    fontSize = 8.sp,
+                                    color = Color(0xFFE11D48),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "الفترة: ${dateFormatter.format(java.util.Date(debtor.rentStartDate))} ➔ ${dateFormatter.format(java.util.Date(debtor.rentEndDate ?: System.currentTimeMillis()))}",
+                                fontSize = 8.5.sp,
+                                color = Color(0xFF64748B)
+                            )
+                            Text(
+                                text = "الإيجار: ${debtor.roomRent.toLong()} ريال/شهر",
+                                fontSize = 9.sp,
+                                color = Color(0xFF64748B)
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "المسدد: ${debtor.totalPaid.toLong()} ريال (إجمالي المستحق: ${totalRent.toLong()} ريال)",
+                                fontSize = 8.5.sp,
+                                color = Color(0xFF64748B)
+                            )
+                            Text(
+                                text = "الدين المعلق: ${remaining.toLong()} ريال",
+                                fontSize = 9.sp,
+                                color = Color(0xFFEF4444),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Room Financial Summary footer
+            HorizontalDivider(color = Color(0xFFE2E8F0))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "إجمالي ديون الغرفة (نشطة + معلقة):",
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF64748B)
+                )
+                Text(
+                    text = "${item.totalRemaining.toLong()} ريال",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (item.totalRemaining > 0) Color(0xFFEF4444) else Color(0xFF10B981)
+                )
+            }
         }
     }
 }
