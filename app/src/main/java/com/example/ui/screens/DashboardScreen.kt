@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.Student
 import com.example.ui.Screen
 import com.example.ui.StudentViewModel
+import com.example.ui.components.GraduationCapIcon
 
 @Composable
 fun DashboardScreen(
@@ -66,18 +67,30 @@ fun DashboardScreen(
                     .padding(20.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
-                Column {
-                    Text(
-                        text = "نظام إدارة الطلاب الذكي",
-                        color = Color.White,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "لوحة تحكم إدارية متكاملة للبيانات الأكاديمية • غير متصل بالإنترنت",
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontSize = 11.sp
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "نظام إدارة الطلاب الذكي",
+                            color = Color.White,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "لوحة تحكم إدارية متكاملة للبيانات الأكاديمية • غير متصل بالإنترنت",
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 11.sp
+                        )
+                    }
+                    GraduationCapIcon(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .padding(start = 12.dp),
+                        tint = Color.White.copy(alpha = 0.95f)
                     )
                 }
             }

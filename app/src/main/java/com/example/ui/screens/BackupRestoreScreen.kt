@@ -66,7 +66,7 @@ fun BackupRestoreScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateTo(Screen.Dashboard) }) {
+                    IconButton(onClick = { viewModel.goBack() }) {
                         Icon(
                             imageVector = Icons.Default.ArrowForward,
                             contentDescription = "الرجوع",

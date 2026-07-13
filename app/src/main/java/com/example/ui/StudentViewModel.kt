@@ -31,6 +31,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     private val db = StudentDatabase.getDatabase(application)
     private val studentDao = db.studentDao()
 
+    // Screen navigation history
+    private val navigationHistory = mutableListOf<Screen>()
+
     // Screen navigation
     var currentScreen by mutableStateOf(Screen.Dashboard)
         private set
@@ -82,6 +85,9 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
     }
 
     fun navigateTo(screen: Screen, student: Student? = null) {
+        if (currentScreen != screen) {
+            navigationHistory.add(currentScreen)
+        }
         currentScreen = screen
         formError = null
         operationSuccessMessage = null
@@ -105,6 +111,20 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
         if (student != null) {
             selectedStudent = student
+        }
+    }
+
+    fun goBack() {
+        if (navigationHistory.isNotEmpty()) {
+            val prev = navigationHistory.removeAt(navigationHistory.size - 1)
+            currentScreen = prev
+            // Clear selected student if leaving details screen
+            if (currentScreen != Screen.SearchAndDetails) {
+                selectedStudent = null
+            }
+        } else {
+            currentScreen = Screen.Dashboard
+            selectedStudent = null
         }
     }
 
@@ -168,8 +188,11 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
         viewModelScope.launch {
             try {
+                val currentStudents = studentDao.getAllStudents().sortedBy { it.id }
+                val nextId = if (currentStudents.isEmpty()) 1L else (currentStudents.last().id + 1)
+
                 val student = Student(
-                    id = idToEdit ?: 0,
+                    id = idToEdit ?: nextId,
                     name = nameInput.trim(),
                     idType = idTypeInput,
                     idNumber = idNumberInput.trim(),
@@ -192,7 +215,8 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                 }
 
                 clearForm()
-                // Return to previous list or dashboard after a short delay
+                // Clear navigation history when saving and return to dashboard
+                navigationHistory.clear()
                 navigateTo(Screen.Dashboard)
             } catch (e: Exception) {
                 formError = "خطأ أثناء الحفظ: ${e.message}"
@@ -206,14 +230,24 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         isOperating = true
         viewModelScope.launch {
             try {
+                // Delete student
                 studentDao.deleteStudent(student)
-                operationSuccessMessage = "تم حذف الطالب بنجاح!"
+
+                // Re-index remaining students sequentially from 1 to N
+                val remaining = studentDao.getAllStudents().sortedBy { it.id }
+                studentDao.deleteAllStudents()
+                val reindexed = remaining.mapIndexed { index, s ->
+                    s.copy(id = (index + 1).toLong())
+                }
+                studentDao.insertStudents(reindexed)
+
+                operationSuccessMessage = "تم حذف الطالب وإعادة ترتيب الفهرسة التلقائية بنجاح!"
                 if (selectedStudent?.id == student.id) {
                     selectedStudent = null
                 }
                 onDone()
             } catch (e: Exception) {
-                operationError = "فشل حذف الطالب: ${e.message}"
+                operationError = "فشل حذف الطالب وإعادة الفهرسة: ${e.message}"
             } finally {
                 isOperating = false
             }
@@ -226,7 +260,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         operationError = null
         viewModelScope.launch {
             try {
-                val list = studentDao.getAllStudents()
+                val list = studentDao.getAllStudents().sortedBy { it.id }
                 if (list.isEmpty()) {
                     operationError = "قاعدة البيانات فارغة، لا يمكن إنشاء تقرير لصفر طلاب."
                     return@launch
@@ -251,7 +285,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
         operationError = null
         viewModelScope.launch {
             try {
-                val list = studentDao.getAllStudents()
+                val list = studentDao.getAllStudents().sortedBy { it.id }
                 if (list.isEmpty()) {
                     operationError = "قاعدة البيانات فارغة، لا توجد سجلات لتصديرها."
                     return@launch
@@ -278,8 +312,12 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
             try {
                 val list = BackupManager.importBackup(getApplication(), uri)
                 if (list != null && list.isNotEmpty()) {
-                    // Overwrite/Add records
-                    studentDao.insertStudents(list)
+                    // Clear and save sequentially
+                    studentDao.deleteAllStudents()
+                    val reindexed = list.sortedBy { it.id }.mapIndexed { index, s ->
+                        s.copy(id = (index + 1).toLong())
+                    }
+                    studentDao.insertStudents(reindexed)
                     onSuccess(list.size)
                 } else {
                     operationError = "ملف النسخة الاحتياطية غير صالح أو فارغ."
@@ -305,12 +343,10 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
                     val levels = listOf("المستوى الأول", "المستوى الثاني", "المستوى الثالث", "المستوى الرابع", "المستوى الخامس")
                     val idTypes = listOf("بطاقة شخصية", "جواز سفر", "بطاقة عائلية")
 
-                    val studentsToInsert = mutableListOf<Student>()
-                    for (i in 1..100) { // Let's seed 100 first, or we can seed up to 3000!
-                        // Let's seed exactly 3000 high-performance records if we can! Yes, we can seed 3000 records in less than a second using bulk insert!
-                    }
+                    val existing = studentDao.getAllStudents()
+                    val startId = if (existing.isEmpty()) 1L else (existing.maxOf { it.id } + 1)
 
-                    // Let's seed 3000 students to completely demonstrate high performance and fulfill the performance requirements ("3000 طالب أو أكثر")!
+                    val studentsToInsert = mutableListOf<Student>()
                     val batchSize = 3000
                     for (i in 1..batchSize) {
                         val firstName = firstNames.random()
@@ -325,6 +361,7 @@ class StudentViewModel(application: Application) : AndroidViewModel(application)
 
                         studentsToInsert.add(
                             Student(
+                                id = startId + i - 1,
                                 name = fullName,
                                 idType = idTypes.random(),
                                 idNumber = "0${(100000000..999999999).random()}",

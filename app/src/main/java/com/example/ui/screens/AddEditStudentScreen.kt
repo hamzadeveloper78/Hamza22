@@ -56,7 +56,7 @@ fun AddEditStudentScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = { viewModel.navigateTo(Screen.Dashboard) }) {
+                    IconButton(onClick = { viewModel.goBack() }) {
                         Icon(
                             imageVector = Icons.Default.ArrowForward, // RTL points forward for back action!
                             contentDescription = "الرجوع",
@@ -308,7 +308,7 @@ fun AddEditStudentScreen(
             }
 
             OutlinedButton(
-                onClick = { viewModel.navigateTo(Screen.Dashboard) },
+                onClick = { viewModel.goBack() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),

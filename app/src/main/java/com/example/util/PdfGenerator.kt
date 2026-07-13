@@ -74,17 +74,36 @@ object PdfGenerator {
 
             val currentTimestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale("ar")).format(Date())
 
+            val boldCellPaint = TextPaint().apply {
+                color = Color.rgb(30, 41, 59) // slate-800
+                textSize = 9.5f
+                isAntiAlias = true
+                isFakeBoldText = true
+            }
+
+            val smallCellPaint = TextPaint().apply {
+                color = Color.rgb(100, 116, 139) // slate-500
+                textSize = 8f
+                isAntiAlias = true
+            }
+
+            val levelTextPaint = TextPaint().apply {
+                color = Color.rgb(16, 185, 129) // emerald-600
+                textSize = 8.5f
+                isAntiAlias = true
+                isFakeBoldText = true
+            }
+
             // Columns widths (Total CONTENT_WIDTH = 535)
-            // Layout (from right to left in Arabic view, but physically laid out by x coordinate)
             // Left to Right:
-            // 1. Phone (110) - 2. Level (85) - 3. Specialization (120) - 4. Name (175) - 5. ID (45)
-            val colWidths = floatArrayOf(110f, 85f, 120f, 175f, 45f)
-            val colHeaders = arrayOf("رقم الهاتف", "المستوى", "التخصص", "اسم الطالب", "الرقم")
+            // 1. Phone & Residence (165f) - 2. Specialization & Level (170f) - 3. Name & Identity (200f)
+            val colWidths = floatArrayOf(165f, 170f, 200f)
+            val colHeaders = arrayOf("رقم الهاتف والعنوان بالتفصيل", "التخصص والمستوى الأكاديمي", "اسم الطالب وإثبات الهوية")
 
             // Rows per page calculation
-            val headerHeight = 110f
-            val tableHeaderHeight = 25f
-            val rowHeight = 25f
+            val headerHeight = 150f
+            val tableHeaderHeight = 28f
+            val rowHeight = 38f
             val footerHeight = 40f
             val maxTableHeight = PAGE_HEIGHT - headerHeight - tableHeaderHeight - footerHeight
             val rowsPerPage = (maxTableHeight / rowHeight).toInt()
@@ -98,18 +117,32 @@ object PdfGenerator {
                 val page = pdfDocument.startPage(pageInfo)
                 val canvas = page.canvas
 
-                // 1. Header Section (Only on first page, or simplified on later pages)
+                // 1. Header Section
                 var currentY = MARGIN
 
                 if (pageNumber == 1) {
-                    // Title
-                    drawRtlText(canvas, "تقرير نظام إدارة الطلاب الشامل", PAGE_WIDTH - MARGIN, currentY, titlePaint, Layout.Alignment.ALIGN_NORMAL)
-                    currentY += 25f
+                    // Left-Side Header (الجمهورية اليمنية، اب، شارع الثلاثين)
+                    drawRtlText(canvas, "الجمهورية اليمنية\nإب\nشارع الثلاثين", MARGIN, currentY, metaPaint.apply { textSize = 9.5f; isFakeBoldText = true }, Layout.Alignment.ALIGN_OPPOSITE, 200f)
+
+                    // Right-Side Header (سكن امل الغد، تلفون 777559252)
+                    drawRtlText(canvas, "سكن أمل الغد\nتلفون: 777559252", PAGE_WIDTH - MARGIN, currentY, metaPaint.apply { textSize = 9.5f; isFakeBoldText = true }, Layout.Alignment.ALIGN_NORMAL, 200f)
+
+                    currentY += 50f
+
+                    // Title Centered
+                    val centerTitlePaint = TextPaint().apply {
+                        color = Color.rgb(79, 70, 229) // indigo-600
+                        textSize = 15f
+                        isAntiAlias = true
+                        isFakeBoldText = true
+                    }
+                    drawRtlText(canvas, "تقرير كشف الطلاب الشامل", (PAGE_WIDTH / 2f) + 100f, currentY, centerTitlePaint, Layout.Alignment.ALIGN_NORMAL, 200f)
+                    currentY += 20f
 
                     // Metadata
-                    val metaText = "تاريخ التصدير: $currentTimestamp   |   إجمالي الطلاب: ${students.size} طالب   |   حالة الاتصال: محلي (دون إنترنت)"
-                    drawRtlText(canvas, metaText, PAGE_WIDTH - MARGIN, currentY, metaPaint, Layout.Alignment.ALIGN_NORMAL)
-                    currentY += 20f
+                    val metaText = "تاريخ التصدير: $currentTimestamp   |   إجمالي الطلاب: ${students.size} طالب"
+                    drawRtlText(canvas, metaText, PAGE_WIDTH - MARGIN, currentY, metaPaint.apply { textSize = 8.5f; isFakeBoldText = false }, Layout.Alignment.ALIGN_NORMAL)
+                    currentY += 15f
 
                     // Decorative Line
                     val linePaint = Paint().apply {
@@ -120,10 +153,10 @@ object PdfGenerator {
                     currentY += 15f
                 } else {
                     // Mini header for sub-pages
-                    drawRtlText(canvas, "تقرير نظام إدارة الطلاب - تابع", PAGE_WIDTH - MARGIN, currentY, titlePaint.apply { textSize = 12f }, Layout.Alignment.ALIGN_NORMAL)
-                    currentY += 18f
+                    drawRtlText(canvas, "تقرير كشف الطلاب الشامل - تابع", PAGE_WIDTH - MARGIN, currentY, titlePaint.apply { textSize = 11f }, Layout.Alignment.ALIGN_NORMAL)
+                    currentY += 16f
                     val metaText = "إجمالي الطلاب: ${students.size}   |   صفحة $pageNumber من $totalPages"
-                    drawRtlText(canvas, metaText, PAGE_WIDTH - MARGIN, currentY, metaPaint, Layout.Alignment.ALIGN_NORMAL)
+                    drawRtlText(canvas, metaText, PAGE_WIDTH - MARGIN, currentY, metaPaint.apply { textSize = 8f }, Layout.Alignment.ALIGN_NORMAL)
                     currentY += 10f
                     val linePaint = Paint().apply {
                         color = Color.rgb(79, 70, 229)
@@ -139,13 +172,11 @@ object PdfGenerator {
                 var currentX = MARGIN
                 for (i in colHeaders.indices) {
                     val w = colWidths[i]
-                    // Draw cell background / boundaries
                     if (i > 0) {
                         canvas.drawLine(currentX, currentY, currentX, currentY + tableHeaderHeight, borderPaint)
                     }
-                    // Draw text centered/aligned right in cell
                     val textX = currentX + w - 8f
-                    val textY = currentY + 6f
+                    val textY = currentY + 8f
                     drawRtlText(canvas, colHeaders[i], textX, textY, headerTextPaint, Layout.Alignment.ALIGN_NORMAL, w - 10f)
                     currentX += w
                 }
@@ -155,6 +186,7 @@ object PdfGenerator {
                 val itemsOnThisPage = Math.min(students.size - currentStudentIndex, rowsPerPage)
                 for (r in 0 until itemsOnThisPage) {
                     val student = students[currentStudentIndex]
+                    val displayIndex = currentStudentIndex + 1
                     currentStudentIndex++
 
                     // Zebra striping
@@ -165,28 +197,31 @@ object PdfGenerator {
                     // Row bottom border
                     canvas.drawLine(MARGIN, currentY + rowHeight, PAGE_WIDTH - MARGIN, currentY + rowHeight, borderPaint)
 
-                    // Row contents
-                    // Map student fields to our columns (Right to Left: ID, Name, Specialization, Level, Phone)
-                    val rowData = arrayOf(
-                        student.phone,
-                        student.level,
-                        student.specialization,
-                        student.name,
-                        student.id.toString()
-                    )
+                    // Vertical Dividers
+                    val rightDividerX = PAGE_WIDTH - MARGIN - 200f
+                    canvas.drawLine(rightDividerX, currentY, rightDividerX, currentY + rowHeight, borderPaint)
 
-                    var cellX = MARGIN
-                    for (i in rowData.indices) {
-                        val w = colWidths[i]
-                        if (i > 0) {
-                            canvas.drawLine(cellX, currentY, cellX, currentY + rowHeight, borderPaint)
-                        }
+                    val centerDividerX = PAGE_WIDTH - MARGIN - 200f - 170f
+                    canvas.drawLine(centerDividerX, currentY, centerDividerX, currentY + rowHeight, borderPaint)
 
-                        val textX = cellX + w - 8f
-                        val textY = currentY + 6f
-                        drawRtlText(canvas, rowData[i], textX, textY, cellTextPaint, Layout.Alignment.ALIGN_NORMAL, w - 10f)
-                        cellX += w
-                    }
+                    // Right Section: Student Name & Identity
+                    val nameText = "$displayIndex. ${student.name}"
+                    drawRtlText(canvas, nameText, PAGE_WIDTH - MARGIN - 6f, currentY + 4f, boldCellPaint, Layout.Alignment.ALIGN_NORMAL, 188f)
+                    val idText = "الهوية: ${student.idType} (${student.idNumber})"
+                    drawRtlText(canvas, idText, PAGE_WIDTH - MARGIN - 6f, currentY + 21f, smallCellPaint, Layout.Alignment.ALIGN_NORMAL, 188f)
+
+                    // Center Section: Specialization & Academic Level
+                    drawRtlText(canvas, student.specialization, rightDividerX - 6f, currentY + 4f, cellTextPaint, Layout.Alignment.ALIGN_NORMAL, 158f)
+                    drawRtlText(canvas, student.level, rightDividerX - 6f, currentY + 21f, levelTextPaint, Layout.Alignment.ALIGN_NORMAL, 158f)
+
+                    // Left Section: Phone & Detailed Address
+                    drawRtlText(canvas, "تلفون: ${student.phone}", centerDividerX - 6f, currentY + 4f, cellTextPaint, Layout.Alignment.ALIGN_NORMAL, 153f)
+                    val addressText = "السكن: محافظة ${student.governorate}، م. ${student.district}" + 
+                        if (student.sector.isNotEmpty() || student.village.isNotEmpty()) {
+                            " (عزلة ${student.sector}، ق. ${student.village})"
+                        } else ""
+                    drawRtlText(canvas, addressText, centerDividerX - 6f, currentY + 21f, smallCellPaint, Layout.Alignment.ALIGN_NORMAL, 153f)
+
                     currentY += rowHeight
                 }
 
