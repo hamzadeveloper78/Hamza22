@@ -193,7 +193,7 @@ fun BackupRestoreScreen(
                                 )
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)), // Brand Teal
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),

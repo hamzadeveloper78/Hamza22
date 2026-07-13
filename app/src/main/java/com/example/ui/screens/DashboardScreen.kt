@@ -45,7 +45,7 @@ fun DashboardScreen(
 
     // Color definitions
     val primaryGradient = Brush.horizontalGradient(
-        colors = listOf(Color(0xFF4F46E5), Color(0xFF6366F1)) // Indigo
+        colors = listOf(Color(0xFF0D9488), Color(0xFF059669)) // Teal and Emerald Gradient
     )
 
     LazyColumn(
@@ -106,7 +106,7 @@ fun DashboardScreen(
                     title = "إجمالي الطلاب",
                     value = totalStudents.toString(),
                     icon = Icons.Default.People,
-                    color = Color(0xFF4F46E5),
+                    color = Color(0xFF0D9488), // Brand Teal
                     modifier = Modifier.weight(1f)
                 )
                 StatCard(
@@ -138,7 +138,7 @@ fun DashboardScreen(
                         title = "إضافة طالب جديد",
                         subtitle = "تسجيل بيانات طالب جديد",
                         icon = Icons.Default.PersonAdd,
-                        color = Color(0xFF4F46E5),
+                        color = Color(0xFF0D9488), // Brand Teal
                         onClick = { viewModel.navigateTo(Screen.AddStudent) },
                         modifier = Modifier.weight(1f)
                     )
@@ -168,7 +168,7 @@ fun DashboardScreen(
                         title = "النسخ والتقارير",
                         subtitle = "نسخ احتياطي وتقارير PDF",
                         icon = Icons.Default.Settings,
-                        color = Color(0xFF8B5CF6),
+                        color = Color(0xFF0891B2), // Cyan
                         onClick = { viewModel.navigateTo(Screen.BackupAndReport) },
                         modifier = Modifier.weight(1f)
                     )
@@ -193,7 +193,7 @@ fun DashboardScreen(
                 )
                 if (students.isNotEmpty()) {
                     TextButton(onClick = { viewModel.navigateTo(Screen.AllStudents) }) {
-                        Text("عرض الكل", fontSize = 11.sp, color = Color(0xFF4F46E5))
+                        Text("عرض الكل", fontSize = 11.sp, color = Color(0xFF0D9488))
                     }
                 }
             }

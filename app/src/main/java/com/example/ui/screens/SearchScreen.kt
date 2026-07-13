@@ -90,12 +90,14 @@ fun SearchScreen(
                 singleLine = true,
                 shape = RoundedCornerShape(16.dp),
                 colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color(0xFF4F46E5),
+                    focusedTextColor = Color(0xFF0F172A), // Highly readable dark text
+                    unfocusedTextColor = Color(0xFF0F172A), // Highly readable dark text
+                    focusedBorderColor = Color(0xFF0D9488), // Brand Teal
                     unfocusedBorderColor = Color(0xFFE2E8F0).copy(alpha = 0.5f),
                     focusedContainerColor = Color.White,
                     unfocusedContainerColor = Color.White
                 ),
-                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+                textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color(0xFF0F172A)),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -284,7 +286,7 @@ fun StudentSearchItem(
                     Text(
                         text = "رقم: ${student.id}",
                         fontSize = 9.sp,
-                        color = Color(0xFF4F46E5),
+                        color = Color(0xFF0D9488), // Brand Teal
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -359,7 +361,7 @@ fun StudentDetailsDialog(
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = null,
-                            tint = Color(0xFF4F46E5)
+                            tint = Color(0xFF0D9488) // Brand Teal
                         )
                     }
 
@@ -387,7 +389,7 @@ fun StudentDetailsDialog(
                     Text(
                         text = "رقم القيد الأكاديمي: ${student.id}",
                         fontSize = 10.sp,
-                        color = Color(0xFF4F46E5),
+                        color = Color(0xFF0D9488), // Brand Teal
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -432,7 +434,7 @@ fun StudentDetailsDialog(
                 ) {
                     Button(
                         onClick = onEdit,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)), // Brand Teal
                         modifier = Modifier
                             .weight(1.2f)
                             .height(46.dp),

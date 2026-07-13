@@ -122,12 +122,14 @@ fun StudentListScreen(
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = Color(0xFF4F46E5),
+                            focusedTextColor = Color(0xFF0F172A), // Highly visible dark text
+                            unfocusedTextColor = Color(0xFF0F172A), // Highly visible dark text
+                            focusedBorderColor = Color(0xFF0D9488), // Brand Teal
                             unfocusedBorderColor = Color(0xFFE2E8F0).copy(alpha = 0.3f),
                             focusedContainerColor = Color(0xFFF8FAFC),
                             unfocusedContainerColor = Color(0xFFF8FAFC)
                         ),
-                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
+                        textStyle = LocalTextStyle.current.copy(fontSize = 12.sp, color = Color(0xFF0F172A)),
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -186,7 +188,7 @@ fun StudentListScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(if (isSelected) Color(0xFF4F46E5) else Color(0xFFF1F5F9))
+                                    .background(if (isSelected) Color(0xFF0D9488) else Color(0xFFF1F5F9))
                                     .clickable { selectedLevelFilter = level }
                                     .padding(horizontal = 14.dp, vertical = 6.dp),
                                 contentAlignment = Alignment.Center
@@ -306,7 +308,7 @@ fun StudentListCard(
                     text = index.toString(),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF4F46E5)
+                    color = Color(0xFF0D9488)
                 )
             }
 

@@ -288,7 +288,7 @@ fun AddEditStudentScreen(
             // Action Save/Cancel Buttons
             Button(
                 onClick = { viewModel.saveStudent() },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4F46E5)),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0D9488)),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -357,7 +357,7 @@ fun FormHeader(text: String) {
         text = text,
         fontSize = 13.sp,
         fontWeight = FontWeight.Bold,
-        color = Color(0xFF4F46E5),
+        color = Color(0xFF0D9488), // Brand Teal
         modifier = Modifier.padding(bottom = 4.dp)
     )
 }
@@ -380,16 +380,18 @@ fun CustomOutlinedTextField(
         leadingIcon = { Icon(imageVector = icon, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(20.dp)) },
         singleLine = true,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Color(0xFF4F46E5),
+            focusedTextColor = Color(0xFF0F172A), // Highly visible dark slate
+            unfocusedTextColor = Color(0xFF0F172A), // Highly visible dark slate
+            focusedBorderColor = Color(0xFF0D9488), // Brand Teal
             unfocusedBorderColor = Color(0xFFE2E8F0).copy(alpha = 0.5f),
-            focusedLabelColor = Color(0xFF4F46E5),
+            focusedLabelColor = Color(0xFF0D9488), // Brand Teal
             unfocusedLabelColor = Color(0xFF64748B),
             focusedContainerColor = Color(0xFFF8FAFC),
             unfocusedContainerColor = Color(0xFFF8FAFC)
         ),
         shape = RoundedCornerShape(12.dp),
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp),
+        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp, color = Color(0xFF0F172A)),
         modifier = modifier.fillMaxWidth()
     )
 }
@@ -440,13 +442,13 @@ fun OptionSelectorDialog(
                             text = option,
                             fontSize = 13.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) Color(0xFF4F46E5) else Color(0xFF475569)
+                            color = if (isSelected) Color(0xFF0D9488) else Color(0xFF475569)
                         )
                         if (isSelected) {
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = null,
-                                tint = Color(0xFF4F46E5),
+                                tint = Color(0xFF0D9488),
                                 modifier = Modifier.size(20.dp)
                             )
                         }

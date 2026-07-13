@@ -31,14 +31,14 @@ object PdfGenerator {
         val pdfDocument = PdfDocument()
         try {
             val titlePaint = TextPaint().apply {
-                color = Color.rgb(30, 41, 59) // slate-800
+                color = Color.rgb(15, 23, 42) // slate-900 (instead of rgb(30, 41, 59))
                 textSize = 18f
                 isAntiAlias = true
                 isFakeBoldText = true
             }
 
             val metaPaint = TextPaint().apply {
-                color = Color.rgb(100, 116, 139) // slate-500
+                color = Color.rgb(71, 85, 105) // slate-600
                 textSize = 9f
                 isAntiAlias = true
             }
@@ -57,13 +57,13 @@ object PdfGenerator {
             }
 
             val borderPaint = Paint().apply {
-                color = Color.rgb(226, 232, 240) // slate-200
+                color = Color.rgb(203, 213, 225) // slate-300
                 style = Paint.Style.STROKE
                 strokeWidth = 0.5f
             }
 
             val headerBgPaint = Paint().apply {
-                color = Color.rgb(79, 70, 229) // indigo-600
+                color = Color.rgb(13, 148, 136) // Teal-600
                 style = Paint.Style.FILL
             }
 
@@ -75,20 +75,20 @@ object PdfGenerator {
             val currentTimestamp = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale("ar")).format(Date())
 
             val boldCellPaint = TextPaint().apply {
-                color = Color.rgb(30, 41, 59) // slate-800
+                color = Color.rgb(15, 23, 42) // slate-900
                 textSize = 9.5f
                 isAntiAlias = true
                 isFakeBoldText = true
             }
 
             val smallCellPaint = TextPaint().apply {
-                color = Color.rgb(100, 116, 139) // slate-500
+                color = Color.rgb(71, 85, 105) // slate-600
                 textSize = 8f
                 isAntiAlias = true
             }
 
             val levelTextPaint = TextPaint().apply {
-                color = Color.rgb(16, 185, 129) // emerald-600
+                color = Color.rgb(17, 94, 89) // Teal-800
                 textSize = 8.5f
                 isAntiAlias = true
                 isFakeBoldText = true
@@ -131,7 +131,7 @@ object PdfGenerator {
 
                     // Title Centered
                     val centerTitlePaint = TextPaint().apply {
-                        color = Color.rgb(79, 70, 229) // indigo-600
+                        color = Color.rgb(13, 148, 136) // Teal-600
                         textSize = 15f
                         isAntiAlias = true
                         isFakeBoldText = true
@@ -146,7 +146,7 @@ object PdfGenerator {
 
                     // Decorative Line
                     val linePaint = Paint().apply {
-                        color = Color.rgb(79, 70, 229)
+                        color = Color.rgb(13, 148, 136) // Teal-600
                         strokeWidth = 2f
                     }
                     canvas.drawLine(MARGIN, currentY, PAGE_WIDTH - MARGIN, currentY, linePaint)
@@ -159,7 +159,7 @@ object PdfGenerator {
                     drawRtlText(canvas, metaText, PAGE_WIDTH - MARGIN, currentY, metaPaint.apply { textSize = 8f }, Layout.Alignment.ALIGN_NORMAL)
                     currentY += 10f
                     val linePaint = Paint().apply {
-                        color = Color.rgb(79, 70, 229)
+                        color = Color.rgb(13, 148, 136) // Teal-600
                         strokeWidth = 1f
                     }
                     canvas.drawLine(MARGIN, currentY, PAGE_WIDTH - MARGIN, currentY, linePaint)
